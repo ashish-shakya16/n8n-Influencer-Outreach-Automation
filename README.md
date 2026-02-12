@@ -1,4 +1,4 @@
-# CrowdWisdomTrading Influencer Outreach Automation
+# Trading Influencer Outreach Automation
 
 > Automated lead generation and CRM integration workflow for discovering and engaging with trading influencers across social media platforms.
 

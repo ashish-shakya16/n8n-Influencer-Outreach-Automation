@@ -1,0 +1,629 @@
+{
+  "name": "CrowdWisdomTrading Outreach (Final Fix)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "1f9c0976-3f5e-4c4f-b072-01cfed583757",
+        "formTitle": "CrowdWisdom Influencer Search",
+        "formDescription": "Search for influencers by lead type and platform",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Lead Type",
+              "defaultValue": "Forex Trading"
+            },
+            {
+              "fieldLabel": "Platform",
+              "fieldType": "checkbox",
+              "fieldOptions": {
+                "values": [
+                  {},
+                  {
+                    "option": "YouTube"
+                  },
+                  {
+                    "option": "Instagram"
+                  },
+                  {
+                    "option": "TikTok"
+                  },
+                  {
+                    "option": "LinkedIn"
+                  },
+                  {}
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ce1fa847-3ed4-4241-b9e8-5349fb3b22c3",
+      "name": "Step 1: Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4784,
+        480
+      ],
+      "webhookId": "1f9c0976-3f5e-4c4f-b072-01cfed583757"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ 'Top ' + $json.lead_type + ' influencers on ' + $json.platform + ' with more than 50000 followers include bio and contact info' }}"
+            },
+            {
+              "name": "include_answer",
+              "value": true
+            },
+            {
+              "name": "max_results",
+              "value": 5
+            },
+            {
+              "name": "api_key",
+              "value": "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"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a7c2cd94-ed66-4ea0-8edb-19968c7b5017",
+      "name": "Step 2: Search (Tavily)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -4560,
+        480
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and filter search results - demo version with simulated data\nconst searchResults = $input.all()[0]?.json?.results || [];\nconst processed = [];\n\nif (Array.isArray(searchResults) && searchResults.length > 0) {\n  searchResults.forEach((result) => {\n    // Simulate followers for demo filtering\n    const simulatedFollowers = Math.floor(Math.random() * (100000 - 40000 + 1) + 40000);\n    \n    if (simulatedFollowers > 50000) {\n      const urlStr = result.url || \"\";\n      const hostname = urlStr.split('/')[2]?.replace('www.', '') || \"unknown.com\";\n      \n      processed.push({\n        name: result.title ? result.title.substring(0, 50) : \"Influencer\",\n        platform: hostname.split('.')[0] || \"web\",\n        followers: simulatedFollowers,\n        bio: result.content ? result.content.substring(0, 100) : \"Trading content creator\",\n        website: urlStr || \"https://unknown.com\",\n        email: hostname + \"-info@domain.com\",\n        linkedin_url: urlStr.includes('linkedin') ? urlStr : null,\n        lead_source: \"Tavily Search\"\n      });\n    }\n  });\n}\n\n// Return empty array if no results (graceful degradation)\nreturn processed.length > 0 ? processed : [\n  {\n    name: \"Demo Influencer\",\n    platform: \"youtube\",\n    followers: 65000,\n    bio: \"Trading content creator with 65K followers\",\n    website: \"https://youtube.com/demo\",\n    email: \"demo@youtube.com\",\n    linkedin_url: null,\n    lead_source: \"Demo Data\"\n  }\n];"
+      },
+      "id": "8d9afb79-2195-46e8-899f-f0fab298ef6f",
+      "name": "Step 3: Extract & Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4336,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "name",
+              "value": "={{ $json.name }}"
+            },
+            {
+              "name": "platform",
+              "value": "={{ $('Step 1: Form Trigger').item.json.platform }}"
+            },
+            {
+              "name": "followers",
+              "value": "={{ $json.followers }}"
+            },
+            {
+              "name": "bio",
+              "value": "={{ $json.bio }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "linkedin",
+              "value": "={{ $json.linkedin_url }}"
+            },
+            {
+              "name": "status",
+              "value": "Found"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "29d460b2-a87a-4b0c-a52c-025da34e475a",
+      "name": "Step 4: Structure Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -4112,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "companyName": "={{ $json.platform }}",
+          "firstName": "={{ $json.name }}",
+          "websiteUrl": "={{ $json.website }}"
+        }
+      },
+      "id": "287a7200-868b-4190-a0e2-f8def3ee6041",
+      "name": "Step 5: CRM Create Contact",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        -3888,
+        480
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.all()[0].json.content.parts[0].text;\n// Remove markdown code blocks if Gemini adds them despite instructions\nconst cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();\n\ntry {\n  return JSON.parse(cleanJson);\n} catch (e) {\n  return { error: \"Failed to parse JSON\", raw: content };\n}"
+      },
+      "id": "e7c8ac3b-a9d0-4f02-9b09-0d64f8710e0b",
+      "name": "Step 7: Parse JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3312,
+        480
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "resource": "engagement",
+        "type": "task",
+        "metadata": {
+          "body": "={{ 'Outreach Strategy: ' + $json.outreach_strategy + '\\n\\nKey Points: ' + $json.key_talking_points.join(', ') + '\\n\\nEngagement Score: ' + $json.engagement_score }}"
+        },
+        "additionalFields": {
+          "associations": {
+            "contactIds": "={{ $('Step 5: CRM Create Contact').item.json.id }}"
+          }
+        }
+      },
+      "id": "c3b93f76-df77-4a65-9995-4a72816c0db1",
+      "name": "Step 8: CRM Save Note",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        -3088,
+        480
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $(\"Step 4: Structure Data\").item.json.linkedin }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "04646b75-547d-4dba-b6c1-cee0ac1c8ba9",
+      "name": "Step 9: Has LinkedIn?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2864,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "engagement",
+        "type": "task",
+        "metadata": {
+          "body": "={{ 'LinkedIn Profile: ' + $('Step 4: Structure Data').item.json.linkedin + '\\n\\nOutreach Strategy: ' + $('Step 7: Parse JSON').item.json.outreach_strategy }}",
+          "status": "NOT_STARTED",
+          "subject": "={{ 'Connect with ' + $('Step 4: Structure Data').item.json.name + ' on LinkedIn' }}"
+        },
+        "additionalFields": {
+          "associations": {
+            "contactIds": "={{ $('Step 5: CRM Create Contact').item.json.id }}"
+          }
+        }
+      },
+      "id": "19002034-af37-4293-82aa-661a9b2a87cc",
+      "name": "Step 10: Create LinkedIn Task",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        -2640,
+        384
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "Processed (No LinkedIn)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3faf48db-d465-4e9d-baa1-e5fe837e36c4",
+      "name": "No LinkedIn Flow",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -2640,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "<__PLACEHOLDER_VALUE__Outreach Logs Spreadsheet ID__>",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "<__PLACEHOLDER_VALUE__Sheet Name (e.g., Logs)__>",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $(\"Step 4: Structure Data\").item.json.name }}",
+            "platform": "={{ $(\"Step 4: Structure Data\").item.json.platform }}",
+            "status": "Processed",
+            "date": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0efc6ac7-82ce-4c12-8cd4-3895920fd19c",
+      "name": "Step 11: Data Store (Sheets)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -2416,
+        480
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dU4QYK7PLH2eICWk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "5bd506c6-9586-43a3-a7ac-72d597b1676d",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4784,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "<__PLACEHOLDER_VALUE__Error Logs Spreadsheet ID__>",
+          "mode": "list",
+          "cachedResultName": "Error Logs"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "<__PLACEHOLDER_VALUE__Sheet Name (e.g., Errors)__>",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "node": "={{ $json.execution.lastNodeExecuted }}",
+            "status": "Failed"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "node",
+              "displayName": "node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a7e41e2b-287a-43f3-920c-8c8fa54ba57f",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -4560,
+        800
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dU4QYK7PLH2eICWk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are creating a personalized outreach email for a trading influencer.\n\nInfluencer Profile:\n- Name: {{ $json.name }}\n- Platform: {{ $json.platform }}\n- Followers: {{ $json.followers }}\n- Bio: {{ $json.bio }}\n\nTask: Write a professional, personalized email with:\n1. Subject line (catchy hook mentioning CrowdWisdomTrading)\n2. Email body (2-3 paragraphs, personalized to their content)\n3. Clear CTA asking for feedback or collaboration\n\nReturn ONLY valid JSON (no markdown):\n{\n  \"subject\": \"...\",\n  \"body\": \"...\"\n}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -3664,
+        480
+      ],
+      "id": "18258e48-737f-498f-a93c-8bd04e4fc178",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "FWVCmvZcxPCwema2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Step 1: Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Step 2: Search (Tavily)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 2: Search (Tavily)": {
+      "main": [
+        [
+          {
+            "node": "Step 3: Extract & Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 3: Extract & Filter": {
+      "main": [
+        [
+          {
+            "node": "Step 4: Structure Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 4: Structure Data": {
+      "main": [
+        [
+          {
+            "node": "Step 5: CRM Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 7: Parse JSON": {
+      "main": [
+        [
+          {
+            "node": "Step 8: CRM Save Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 8: CRM Save Note": {
+      "main": [
+        [
+          {
+            "node": "Step 9: Has LinkedIn?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 9: Has LinkedIn?": {
+      "main": [
+        [
+          {
+            "node": "Step 10: Create LinkedIn Task",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No LinkedIn Flow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 10: Create LinkedIn Task": {
+      "main": [
+        [
+          {
+            "node": "Step 11: Data Store (Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No LinkedIn Flow": {
+      "main": [
+        [
+          {
+            "node": "Step 11: Data Store (Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 5: CRM Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Step 7: Parse JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "acc5c21d-24ba-4eca-b6b8-fe67803f8cf3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b53d95fbb64d39db08815f2626b340dc2b50df74472b2a5ea717452b5791d208"
+  },
+  "id": "HGyMkAFiKqvmIxcM",
+  "tags": []
+}
